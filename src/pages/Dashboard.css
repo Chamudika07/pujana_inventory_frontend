@@ -1,0 +1,56 @@
+.dashboard {
+  background-color: #f5f7fa;
+  min-height: calc(100vh - 60px);
+}
+
+.stat-card {
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-primary .stat-icon {
+  background-color: rgba(0, 102, 204, 0.1);
+  color: #0066cc;
+}
+
+.card-warning .stat-icon {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+}
+
+.card-danger .stat-icon {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.card-info .stat-icon {
+  background-color: rgba(23, 162, 184, 0.1);
+  color: #17a2b8;
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .stat-card h3 {
+    font-size: 1.5rem;
+  }
+}
