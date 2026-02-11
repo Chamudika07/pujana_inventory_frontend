@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiMenu, FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiMenu, FiLogOut, FiSettings, FiUser } from 'react-icons/fi';
 import { useAuthStore } from '@stores/authStore';
 import './Navbar.css';
 
@@ -9,7 +9,7 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
-    const { logout } = useAuthStore();
+    const { logout, user } = useAuthStore();
 
     const handleLogout = () => {
         logout();
@@ -44,11 +44,19 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
                     <ul className="navbar-nav ms-auto">
                         <li className="nav-item dropdown">
                             <button
-                                className="nav-link btn btn-link text-white dropdown-toggle"
+                                className="nav-link btn btn-link text-white dropdown-toggle d-flex align-items-center"
                                 id="profileDropdown"
                                 data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                                aria-label="User menu"
                             >
-                                Account
+                                <FiUser size={16} className="me-2" />
+                                <span className="d-none d-lg-inline">
+                                    {user ? user.email : 'Account'}
+                                </span>
+                                <span className="d-lg-none">
+                                    {user ? user.email.split('@')[0] : 'Account'}
+                                </span>
                             </button>
                             <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                                 <li>

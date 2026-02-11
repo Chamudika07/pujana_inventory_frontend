@@ -6,7 +6,6 @@ import {
     FiTag,
     FiShoppingCart,
     FiBell,
-    FiX,
 } from 'react-icons/fi';
 import './Sidebar.css';
 
@@ -41,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
             )}
 
             <aside className={`sidebar ${open ? 'open' : ''}`}>
-                <button className="btn-close d-lg-none ms-auto" onClick={onClose} />
+                <button className="btn-close d-lg-none ms-auto" onClick={onClose} aria-label="Close sidebar" />
 
                 <nav className="nav flex-column">
                     {menuItems.map((item) => (

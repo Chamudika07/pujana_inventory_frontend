@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Container,
     Card,
@@ -14,14 +15,12 @@ import {
     ListGroup
 } from 'react-bootstrap';
 import { billService } from '../../services/billService';
-import { itemService } from '../../services/itemService';
-import type { Bill, PrintBillResponse, BillItemAction } from '../../types/bill';
-import type { Item } from '../../types/item';
+import type { Bill, PrintBillResponse } from '../../types/bill';
 
 const Bills: React.FC = () => {
+    const navigate = useNavigate();
     const [bills, setBills] = useState<Bill[]>([]);
     const [filteredBills, setFilteredBills] = useState<Bill[]>([]);
-    const [items, setItems] = useState<Item[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -31,17 +30,7 @@ const Bills: React.FC = () => {
     // Modal states
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPrintModal, setShowPrintModal] = useState(false);
-    const [currentBillId, setCurrentBillId] = useState<string | null>(null);
     const [billData, setBillData] = useState<PrintBillResponse | null>(null);
-
-    // Add Item modal states
-    const [showAddItemModal, setShowAddItemModal] = useState(false);
-    const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
-    const [itemFormData, setItemFormData] = useState<BillItemAction>({
-        bill_id: '',
-        model_number: '',
-        quantity: 0
-    });
 
     // Load bills and items on component mount
     useEffect(() => {
@@ -72,12 +61,8 @@ const Bills: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            const [billsData, itemsData] = await Promise.all([
-                billService.getAll(),
-                itemService.getAll()
-            ]);
+            const billsData = await billService.getAll();
             setBills(billsData);
-            setItems(itemsData);
         } catch (err) {
             setError('Failed to load data');
             console.error(err);
@@ -86,49 +71,9 @@ const Bills: React.FC = () => {
         }
     };
 
-    const handleStartBill = async (billType: 'buy' | 'sell') => {
-        try {
-            setError(null);
-            const response = await billService.startBill(billType);
-            setCurrentBillId(response.bill_id);
-            setSelectedBillId(response.bill_id);
-            setSuccess(`${billType.toUpperCase()} bill started successfully`);
-            setShowBillModal(false);
-            setShowAddItemModal(true);
-            loadData();
-        } catch (err) {
-            setError('Failed to start bill');
-            console.error(err);
-        }
-    };
 
-    const handleAddItemToBill = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!itemFormData.model_number.trim()) {
-            setError('Please select an item');
-            return;
-        }
-
-        if (itemFormData.quantity <= 0) {
-            setError('Quantity must be greater than 0');
-            return;
-        }
-
-        try {
-            setError(null);
-            await billService.addItemToBill(itemFormData);
-            setSuccess('Item added to bill successfully');
-            setItemFormData({
-                bill_id: selectedBillId || '',
-                model_number: '',
-                quantity: 0
-            });
-            loadData();
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.detail || 'Failed to add item to bill';
-            setError(errorMessage);
-        }
+    const handleCreateBill = (billType: 'buy' | 'sell') => {
+        navigate(`/bills/create/${billType}`);
     };
 
     const handleViewBill = async (billId: string) => {
@@ -149,9 +94,6 @@ const Bills: React.FC = () => {
         }
     };
 
-    const getSelectedItemDetails = (modelNumber: string): Item | undefined => {
-        return items.find(item => item.model_number === modelNumber);
-    };
 
     return (
         <Container fluid className="py-4">
@@ -162,8 +104,8 @@ const Bills: React.FC = () => {
             </div>
 
             {/* Alerts */}
-            {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
-            {success && <Alert variant="success" onClose={() => setSuccess(null)} dismissible>{success}</Alert>}
+            {error && <Alert key="error-alert" variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
+            {success && <Alert key="success-alert" variant="success" onClose={() => setSuccess(null)} dismissible>{success}</Alert>}
 
             {/* Action Buttons */}
             <Row className="mb-4">
@@ -299,7 +241,7 @@ const Bills: React.FC = () => {
                         <Button
                             variant="info"
                             size="lg"
-                            onClick={() => handleStartBill('buy')}
+                            onClick={() => handleCreateBill('buy')}
                             className="fw-semibold"
                         >
                             <i className="bi bi-cart-plus me-2"></i>
@@ -308,95 +250,13 @@ const Bills: React.FC = () => {
                         <Button
                             variant="success"
                             size="lg"
-                            onClick={() => handleStartBill('sell')}
+                            onClick={() => handleCreateBill('sell')}
                             className="fw-semibold"
                         >
                             <i className="bi bi-bag-check me-2"></i>
                             Sell Bill
                         </Button>
                     </div>
-                </Modal.Body>
-            </Modal>
-
-            {/* Add Item to Bill Modal */}
-            <Modal show={showAddItemModal} onHide={() => setShowAddItemModal(false)} centered>
-                <Modal.Header closeButton className="bg-light">
-                    <Modal.Title>Add Items to Bill</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <div className="mb-3 p-2 bg-light rounded">
-                        <small className="text-muted">Bill ID:</small>
-                        <p className="fw-semibold mb-0">{selectedBillId}</p>
-                    </div>
-
-                    <Form onSubmit={handleAddItemToBill}>
-                        <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                Select Item <span className="text-danger">*</span>
-                            </Form.Label>
-                            <Form.Select
-                                value={itemFormData.model_number}
-                                onChange={(e) => {
-                                    setItemFormData(prev => ({
-                                        ...prev,
-                                        model_number: e.target.value
-                                    }));
-                                }}
-                            >
-                                <option value="">-- Select an item --</option>
-                                {items.map(item => (
-                                    <option key={item.id} value={item.model_number}>
-                                        {item.name} (Model: {item.model_number}) - {item.quantity} in stock
-                                    </option>
-                                ))}
-                            </Form.Select>
-                        </Form.Group>
-
-                        {itemFormData.model_number && getSelectedItemDetails(itemFormData.model_number) && (
-                            <div className="mb-3 p-2 bg-light rounded">
-                                <Row className="g-2">
-                                    <Col xs={6}>
-                                        <small className="text-muted">Category:</small>
-                                        <p className="fw-semibold mb-0">
-                                            {getSelectedItemDetails(itemFormData.model_number)?.category.name}
-                                        </p>
-                                    </Col>
-                                    <Col xs={6}>
-                                        <small className="text-muted">Available Qty:</small>
-                                        <p className="fw-semibold mb-0">
-                                            {getSelectedItemDetails(itemFormData.model_number)?.quantity}
-                                        </p>
-                                    </Col>
-                                </Row>
-                            </div>
-                        )}
-
-                        <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                Quantity <span className="text-danger">*</span>
-                            </Form.Label>
-                            <Form.Control
-                                type="number"
-                                name="quantity"
-                                value={itemFormData.quantity}
-                                onChange={(e) => {
-                                    setItemFormData(prev => ({
-                                        ...prev,
-                                        quantity: Number(e.target.value)
-                                    }));
-                                }}
-                                min="1"
-                                placeholder="Enter quantity"
-                            />
-                        </Form.Group>
-
-                        <div className="d-grid gap-2">
-                            <Button variant="primary" type="submit" className="fw-semibold">
-                                <i className="bi bi-plus-circle me-2"></i>
-                                Add Item to Bill
-                            </Button>
-                        </div>
-                    </Form>
                 </Modal.Body>
             </Modal>
 
@@ -436,7 +296,7 @@ const Bills: React.FC = () => {
                                 <h6 className="fw-bold mb-2">Items</h6>
                                 <ListGroup variant="flush">
                                     {billData.items.map((item, index) => (
-                                        <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
+                                        <ListGroup.Item key={`${billData.bill_id}-${index}`} className="d-flex justify-content-between align-items-center">
                                             <div>
                                                 <p className="fw-semibold mb-1">{item.item}</p>
                                                 <small className="text-muted">
