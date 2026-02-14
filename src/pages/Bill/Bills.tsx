@@ -181,7 +181,7 @@ const Bills: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {filteredBills.map(bill => (
-                                        <tr key={bill.id}>
+                                        <tr key={bill.bill_id}>
                                             <td className="fw-semibold">{bill.bill_id}</td>
                                             <td>
                                                 <Badge bg={bill.bill_type === 'buy' ? 'info' : 'success'}>
