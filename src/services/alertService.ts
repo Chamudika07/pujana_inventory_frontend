@@ -45,7 +45,7 @@ export const alertService = {
     },
 
     getActive: async (): Promise<Alert[]> => {
-        const response = await apiClient.get('/alerts?status=active');
+        const response = await apiClient.get('/alerts?show_resolved=false');
         return response.data;
     },
 

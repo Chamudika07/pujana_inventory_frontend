@@ -22,6 +22,7 @@ import BillCreate from '@pages/Bill/BillCreate';
 import Alerts from '@pages/Alerts/Alerts';
 import Settings from '@pages/Settings';
 import NotFound from '@pages/NotFound';
+import NotificationSettings from './pages/Settings/NotificationSettings';
 
 const App: React.FC = () => {
     const { isAuthenticated, isCheckingAuth } = useAuth();
@@ -130,6 +131,14 @@ const App: React.FC = () => {
                             element={
                                 <ProtectedRoute>
                                     <Settings />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/settings/notifications"
+                            element={
+                                <ProtectedRoute>
+                                    <NotificationSettings />
                                 </ProtectedRoute>
                             }
                         />

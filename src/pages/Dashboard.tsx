@@ -5,8 +5,11 @@ import { Link } from 'react-router-dom';
 import { useItemStore } from '@stores/itemStore';
 import { alertService } from '@services/alertService';
 import type { AlertStats } from '../types/alert';
-import { formatPrice } from '@utils/helpers';
 import './Dashboard.css';
+
+const formatPrice = (price: number): string => {
+    return `₨ ${Number(price).toFixed(2)}`;
+};
 
 const Dashboard: React.FC = () => {
     const { items, fetchItems, isLoading } = useItemStore();
