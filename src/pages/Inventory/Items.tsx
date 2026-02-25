@@ -24,9 +24,16 @@ const Items: React.FC = () => {
         buying_price: 0,
         selling_price: 0,
         description: '',
-        model_number: '',
         category_id: 0
     });
+    const [buyingPriceFocused, setBuyingPriceFocused] = useState(false);
+    const [sellingPriceFocused, setSellingPriceFocused] = useState(false);
+    const [quantityFocused, setQuantityFocused] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+
+    // QR Code modal state
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [selectedItemQR, setSelectedItemQR] = useState<Item | null>(null);
 
     // Load items and categories on component mount
     useEffect(() => {
@@ -79,7 +86,6 @@ const Items: React.FC = () => {
                 buying_price: item.buying_price,
                 selling_price: item.selling_price,
                 description: item.description || '',
-                model_number: item.model_number,
                 category_id: item.category.id
             });
         } else {
@@ -90,11 +96,11 @@ const Items: React.FC = () => {
                 buying_price: 0,
                 selling_price: 0,
                 description: '',
-                model_number: '',
                 category_id: 0
             });
         }
         setShowModal(true);
+        setFieldErrors({});
     };
 
     const handleCloseModal = () => {
@@ -106,9 +112,9 @@ const Items: React.FC = () => {
             buying_price: 0,
             selling_price: 0,
             description: '',
-            model_number: '',
             category_id: 0
         });
+        setFieldErrors({});
     };
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -128,27 +134,31 @@ const Items: React.FC = () => {
     };
 
     const validateForm = (): boolean => {
+        const errors: Record<string, boolean> = {};
+
         if (!formData.name.trim()) {
             setError('Item name is required');
-            return false;
-        }
-        if (!formData.model_number.trim()) {
-            setError('Model number is required');
-            return false;
+            errors.name = true;
         }
         if (formData.category_id === 0) {
             setError('Please select a category');
-            return false;
+            errors.category_id = true;
         }
-        if (formData.buying_price < 0 || formData.selling_price < 0) {
-            setError('Prices cannot be negative');
-            return false;
+        if (formData.buying_price < 0) {
+            setError('Buying price cannot be negative');
+            errors.buying_price = true;
+        }
+        if (formData.selling_price < 0) {
+            setError('Selling price cannot be negative');
+            errors.selling_price = true;
         }
         if (formData.quantity < 0) {
             setError('Quantity cannot be negative');
-            return false;
+            errors.quantity = true;
         }
-        return true;
+
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -160,12 +170,16 @@ const Items: React.FC = () => {
 
         try {
             setError(null);
+            let createdItem: Item;
             if (editingId) {
                 await itemService.update(editingId, formData);
                 setSuccess('Item updated successfully');
             } else {
-                await itemService.create(formData);
+                createdItem = await itemService.create(formData);
                 setSuccess('Item created successfully');
+                // Show QR code for newly created item
+                setSelectedItemQR(createdItem);
+                setShowQRModal(true);
             }
             handleCloseModal();
             loadData();
@@ -186,6 +200,41 @@ const Items: React.FC = () => {
                 setError('Failed to delete item');
                 console.error(err);
             }
+        }
+    };
+
+    const handleViewQRCode = (item: Item) => {
+        setSelectedItemQR(item);
+        setShowQRModal(true);
+    };
+
+    const handleDownloadQRCode = async () => {
+        if (!selectedItemQR) return;
+
+        try {
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/items/${selectedItemQR.id}/qr-code`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+                    }
+                }
+            );
+
+            if (!response.ok) throw new Error('Failed to download QR code');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${selectedItemQR.model_number}_qr.png`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            setError('Failed to download QR code');
+            console.error(err);
         }
     };
 
@@ -330,6 +379,15 @@ const Items: React.FC = () => {
                                                 </td>
                                                 <td className="text-center">
                                                     <Button
+                                                        variant="outline-info"
+                                                        size="sm"
+                                                        onClick={() => handleViewQRCode(item)}
+                                                        className="me-2"
+                                                        title="View QR Code"
+                                                    >
+                                                        <i className="bi bi-qr-code"></i>
+                                                    </Button>
+                                                    <Button
                                                         variant="outline-primary"
                                                         size="sm"
                                                         onClick={() => handleOpenModal(item)}
@@ -383,26 +441,13 @@ const Items: React.FC = () => {
                                         value={formData.name}
                                         onChange={handleFormChange}
                                         placeholder="Enter item name"
+                                        isInvalid={fieldErrors.name}
                                     />
+                                    <Form.Control.Feedback type="invalid">
+                                        Item name is required
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                             </Col>
-                            <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label className="fw-semibold">
-                                        Model Number <span className="text-danger">*</span>
-                                    </Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        name="model_number"
-                                        value={formData.model_number}
-                                        onChange={handleFormChange}
-                                        placeholder="Enter model number"
-                                    />
-                                </Form.Group>
-                            </Col>
-                        </Row>
-
-                        <Row>
                             <Col md={6}>
                                 <Form.Group className="mb-3">
                                     <Form.Label className="fw-semibold">
@@ -412,6 +457,7 @@ const Items: React.FC = () => {
                                         name="category_id"
                                         value={formData.category_id}
                                         onChange={handleFormChange}
+                                        isInvalid={fieldErrors.category_id}
                                     >
                                         <option value="0">Select a category</option>
                                         {categories.map(category => (
@@ -420,8 +466,14 @@ const Items: React.FC = () => {
                                             </option>
                                         ))}
                                     </Form.Select>
+                                    <Form.Control.Feedback type="invalid">
+                                        Please select a category
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                             </Col>
+                        </Row>
+
+                        <Row>
                             <Col md={6}>
                                 <Form.Group className="mb-3">
                                     <Form.Label className="fw-semibold">
@@ -430,11 +482,22 @@ const Items: React.FC = () => {
                                     <Form.Control
                                         type="number"
                                         name="quantity"
-                                        value={formData.quantity}
+                                        value={quantityFocused && formData.quantity === 0 ? '' : formData.quantity}
                                         onChange={handleFormChange}
+                                        onFocus={() => setQuantityFocused(true)}
+                                        onBlur={() => {
+                                            setQuantityFocused(false);
+                                            if (formData.quantity === 0 || formData.quantity === '') {
+                                                setFormData(prev => ({ ...prev, quantity: 0 }));
+                                            }
+                                        }}
                                         min="0"
                                         placeholder="0"
+                                        isInvalid={fieldErrors.quantity}
                                     />
+                                    <Form.Control.Feedback type="invalid">
+                                        Quantity cannot be negative
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                             </Col>
                         </Row>
@@ -445,15 +508,29 @@ const Items: React.FC = () => {
                                     <Form.Label className="fw-semibold">
                                         Buying Price (₨) <span className="text-danger">*</span>
                                     </Form.Label>
-                                    <Form.Control
-                                        type="number"
-                                        name="buying_price"
-                                        value={formData.buying_price}
-                                        onChange={handleFormChange}
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="0.00"
-                                    />
+                                    <div className="input-group has-validation">
+                                        <span className="input-group-text">₨</span>
+                                        <Form.Control
+                                            type="number"
+                                            name="buying_price"
+                                            value={buyingPriceFocused && formData.buying_price === 0 ? '' : formData.buying_price}
+                                            onChange={handleFormChange}
+                                            onFocus={() => setBuyingPriceFocused(true)}
+                                            onBlur={() => {
+                                                setBuyingPriceFocused(false);
+                                                if (formData.buying_price === 0 || formData.buying_price === '') {
+                                                    setFormData(prev => ({ ...prev, buying_price: 0 }));
+                                                }
+                                            }}
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="0.00"
+                                            isInvalid={fieldErrors.buying_price}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            Price cannot be negative
+                                        </Form.Control.Feedback>
+                                    </div>
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
@@ -461,15 +538,29 @@ const Items: React.FC = () => {
                                     <Form.Label className="fw-semibold">
                                         Selling Price (₨) <span className="text-danger">*</span>
                                     </Form.Label>
-                                    <Form.Control
-                                        type="number"
-                                        name="selling_price"
-                                        value={formData.selling_price}
-                                        onChange={handleFormChange}
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="0.00"
-                                    />
+                                    <div className="input-group has-validation">
+                                        <span className="input-group-text">₨</span>
+                                        <Form.Control
+                                            type="number"
+                                            name="selling_price"
+                                            value={sellingPriceFocused && formData.selling_price === 0 ? '' : formData.selling_price}
+                                            onChange={handleFormChange}
+                                            onFocus={() => setSellingPriceFocused(true)}
+                                            onBlur={() => {
+                                                setSellingPriceFocused(false);
+                                                if (formData.selling_price === 0 || formData.selling_price === '') {
+                                                    setFormData(prev => ({ ...prev, selling_price: 0 }));
+                                                }
+                                            }}
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="0.00"
+                                            isInvalid={fieldErrors.selling_price}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            Price cannot be negative
+                                        </Form.Control.Feedback>
+                                    </div>
                                 </Form.Group>
                             </Col>
                         </Row>
@@ -502,6 +593,26 @@ const Items: React.FC = () => {
                                 rows={3}
                             />
                         </Form.Group>
+
+                        {/* Auto-generated Model Number Info */}
+                        {editingId && (
+                            <div className="alert alert-info" role="alert">
+                                <i className="bi bi-info-circle me-2"></i>
+                                <strong>Model Number:</strong> {/* ...existing code will show from item... */}
+                                <p className="mb-0 mt-2 text-muted small">
+                                    Model numbers are automatically generated in the format: MDL-YYYY-NNNNN
+                                </p>
+                            </div>
+                        )}
+                        {!editingId && (
+                            <div className="alert alert-info" role="alert">
+                                <i className="bi bi-info-circle me-2"></i>
+                                <strong>Model Number:</strong> Auto-generated after item creation
+                                <p className="mb-0 mt-2 text-muted small">
+                                    A unique model number (MDL-YYYY-NNNNN format) and QR code will be automatically created when you save this item.
+                                </p>
+                            </div>
+                        )}
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
@@ -510,6 +621,53 @@ const Items: React.FC = () => {
                     </Button>
                     <Button variant="primary" onClick={handleSubmit} className="fw-semibold">
                         {editingId ? 'Update Item' : 'Create Item'}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* QR Code Modal */}
+            <Modal show={showQRModal} onHide={() => setShowQRModal(false)} centered>
+                <Modal.Header closeButton className="bg-light">
+                    <Modal.Title>
+                        <i className="bi bi-qr-code me-2"></i>
+                        QR Code - {selectedItemQR?.model_number}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="text-center">
+                    {selectedItemQR ? (
+                        <>
+                            <div className="mb-4">
+                                <img
+                                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/items/${selectedItemQR.id}/qr-code`}
+                                    alt={`QR Code for ${selectedItemQR.model_number}`}
+                                    style={{ maxWidth: '300px', height: 'auto' }}
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                />
+                            </div>
+                            <div className="bg-light p-3 rounded mb-3">
+                                <p className="mb-1"><strong>Item:</strong> {selectedItemQR.name}</p>
+                                <p className="mb-1"><strong>Model Number:</strong> {selectedItemQR.model_number}</p>
+                                <p className="mb-0"><strong>Category:</strong> {selectedItemQR.category.name}</p>
+                            </div>
+                            <small className="text-muted">
+                                Scan this QR code to view item details or use it for inventory tracking.
+                            </small>
+                        </>
+                    ) : null}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="outline-secondary" onClick={() => setShowQRModal(false)}>
+                        Close
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleDownloadQRCode}
+                        className="fw-semibold"
+                    >
+                        <i className="bi bi-download me-2"></i>
+                        Download QR Code
                     </Button>
                 </Modal.Footer>
             </Modal>

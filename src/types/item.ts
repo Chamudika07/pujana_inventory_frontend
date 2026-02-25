@@ -8,7 +8,11 @@ export interface Item {
   selling_price: number;
   description?: string;
   model_number: string;
-  category: Category;
+  qr_code_path?: string;
+  category: {
+    id: number;
+    name: string;
+  };
   created_at: string;
 }
 
@@ -18,7 +22,6 @@ export interface ItemCreate {
   buying_price: number;
   selling_price: number;
   description?: string;
-  model_number: string;
   category_id: number;
 }
 
