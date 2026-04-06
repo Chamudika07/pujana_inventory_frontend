@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { Bill, BillItemAction, BillResponse } from '../types/bill';
+import type { Bill, BillCreateItem, BillResponse } from '../types/bill';
 import { AxiosError } from 'axios';
 
 export const billService = {
@@ -8,15 +8,11 @@ export const billService = {
     return response.data;
   },
 
-  async startBill(billType: 'buy' | 'sell'): Promise<BillResponse> {
-    const response = await apiClient.post('/bill/start', null, {
-      params: { bill_type: billType },
+  async createBill(billType: 'buy' | 'sell', items: BillCreateItem[]): Promise<BillResponse> {
+    const response = await apiClient.post('/bill/', {
+      bill_type: billType,
+      items,
     });
-    return response.data;
-  },
-
-  async addItemToBill(billItemData: BillItemAction): Promise<any> {
-    const response = await apiClient.post('/bill/item', billItemData);
     return response.data;
   },
 

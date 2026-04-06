@@ -15,7 +15,7 @@ import {
 } from 'react-bootstrap';
 import { billService } from '../../services/billService';
 import { itemService } from '../../services/itemService';
-import type { BillResponse, BillItemAction } from '../../types/bill';
+import type { BillCreateItem, BillResponse } from '../../types/bill';
 import type { Item } from '../../types/item';
 
 interface BillItem {
@@ -34,22 +34,16 @@ const BillCreate: React.FC = () => {
 
     // Form state
     const [billType, setBillType] = useState<'buy' | 'sell'>(type || 'sell');
-    const [billId, setBillId] = useState<string>('');
     const [billStarted, setBillStarted] = useState(false);
 
     // Items state
-    const [items, setItems] = useState<Item[]>([]);
     const [billItems, setBillItems] = useState<BillItem[]>([]);
-    const [selectedItem, setSelectedItem] = useState<string>('');
+    const [modelNumber, setModelNumber] = useState('');
+    const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [quantity, setQuantity] = useState<number>(1);
 
     // Modal state
     const [showConfirmModal, setShowConfirmModal] = useState(false);
-
-    // Load items on component mount
-    useEffect(() => {
-        loadItems();
-    }, []);
 
     // Update bill type when route parameter changes
     useEffect(() => {
@@ -58,14 +52,22 @@ const BillCreate: React.FC = () => {
         }
     }, [type]);
 
-    const loadItems = async () => {
+    const handleLookupItem = async () => {
+        if (!modelNumber.trim()) {
+            setError('Please enter a model number');
+            return;
+        }
+
         try {
             setLoading(true);
             setError(null);
-            const itemsData = await itemService.getAll();
-            setItems(itemsData);
-        } catch (err) {
-            setError('Failed to load items');
+            const item = await itemService.getByModelNumber(modelNumber.trim());
+            setSelectedItem(item);
+            setSuccess(`Item ${item.model_number} loaded`);
+        } catch (err: any) {
+            const errorMessage = err.response?.data?.detail || 'Failed to find item';
+            setSelectedItem(null);
+            setError(errorMessage);
             console.error(err);
         } finally {
             setLoading(false);
@@ -74,25 +76,21 @@ const BillCreate: React.FC = () => {
 
     const handleStartBill = async () => {
         try {
-            setLoading(true);
             setError(null);
             setSuccess(null);
-
-            const response: BillResponse = await billService.startBill(billType);
-            setBillId(response.bill_id);
             setBillStarted(true);
-            setSuccess(`${billType.toUpperCase()} bill started successfully`);
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.detail || 'Failed to start bill';
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
+            setSelectedItem(null);
+            setModelNumber('');
+            setSuccess(`${billType.toUpperCase()} bill draft started`);
+        } catch (err) {
+            setError('Failed to start bill');
+            console.error(err);
         }
     };
 
     const handleAddItem = () => {
         if (!selectedItem) {
-            setError('Please select an item');
+            setError('Please look up an item by model number');
             return;
         }
 
@@ -101,30 +99,25 @@ const BillCreate: React.FC = () => {
             return;
         }
 
-        const item = items.find(i => i.model_number === selectedItem);
-        if (!item) {
-            setError('Selected item not found');
-            return;
-        }
-
         // Check stock availability for sell bills
-        if (billType === 'sell' && item.quantity < quantity) {
-            setError(`Insufficient stock. Available: ${item.quantity}, Requested: ${quantity}`);
+        if (billType === 'sell' && selectedItem.quantity < quantity) {
+            setError(`Insufficient stock. Available: ${selectedItem.quantity}, Requested: ${quantity}`);
             return;
         }
 
-        const price = billType === 'buy' ? item.buying_price : item.selling_price;
+        const price = billType === 'buy' ? selectedItem.buying_price : selectedItem.selling_price;
         const total = price * quantity;
 
         const newBillItem: BillItem = {
-            item,
+            item: selectedItem,
             quantity,
             price,
             total
         };
 
         setBillItems(prev => [...prev, newBillItem]);
-        setSelectedItem('');
+        setSelectedItem(null);
+        setModelNumber('');
         setQuantity(1);
         setError(null);
         setSuccess('Item added to bill successfully');
@@ -140,18 +133,13 @@ const BillCreate: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            // Add each item to the bill via API
-            for (const billItem of billItems) {
-                const itemData: BillItemAction = {
-                    bill_id: billId,
-                    model_number: billItem.item.model_number,
-                    quantity: billItem.quantity
-                };
+            const payload: BillCreateItem[] = billItems.map((billItem) => ({
+                model_number: billItem.item.model_number,
+                quantity: billItem.quantity,
+            }));
 
-                await billService.addItemToBill(itemData);
-            }
-
-            setSuccess('Bill saved successfully!');
+            const response: BillResponse = await billService.createBill(billType, payload);
+            setSuccess(`Bill saved successfully with ID ${response.bill_id}`);
             // Reset form
             resetForm();
         } catch (err: any) {
@@ -164,19 +152,15 @@ const BillCreate: React.FC = () => {
 
     const resetForm = () => {
         setBillType(type || 'sell');
-        setBillId('');
         setBillStarted(false);
         setBillItems([]);
-        setSelectedItem('');
+        setSelectedItem(null);
+        setModelNumber('');
         setQuantity(1);
     };
 
     const calculateTotal = () => {
         return billItems.reduce((sum, item) => sum + item.total, 0);
-    };
-
-    const getSelectedItemDetails = (modelNumber: string) => {
-        return items.find(item => item.model_number === modelNumber);
     };
 
     return (
@@ -261,7 +245,7 @@ const BillCreate: React.FC = () => {
                                         </Badge>
                                     </div>
                                     <p className="text-muted mb-2">Bill ID:</p>
-                                    <h4 className="fw-bold text-primary mb-4">{billId}</h4>
+                                    <h4 className="fw-bold text-primary mb-4">Generated on save</h4>
                                     <div className="d-grid gap-2">
                                         <Button
                                             variant="outline-secondary"
@@ -298,21 +282,15 @@ const BillCreate: React.FC = () => {
                                             <Col md={6}>
                                                 <Form.Group>
                                                     <Form.Label className="fw-semibold">
-                                                        Select Item <span className="text-danger">*</span>
+                                                        Model Number <span className="text-danger">*</span>
                                                     </Form.Label>
-                                                    <Form.Select
-                                                        value={selectedItem}
-                                                        onChange={(e) => setSelectedItem(e.target.value)}
+                                                    <Form.Control
+                                                        type="text"
+                                                        value={modelNumber}
+                                                        onChange={(e) => setModelNumber(e.target.value)}
                                                         disabled={loading}
-                                                        title="Select Item"
-                                                    >
-                                                        <option value="">-- Select an item --</option>
-                                                        {items.map(item => (
-                                                            <option key={item.id} value={item.model_number}>
-                                                                {item.name} (Model: {item.model_number})
-                                                            </option>
-                                                        ))}
-                                                    </Form.Select>
+                                                        placeholder="Enter model number"
+                                                    />
                                                 </Form.Group>
                                             </Col>
                                             <Col md={3}>
@@ -334,13 +312,13 @@ const BillCreate: React.FC = () => {
                                                     <Form.Label className="fw-semibold">Actions</Form.Label>
                                                     <div className="d-grid">
                                                         <Button
-                                                            variant="primary"
-                                                            onClick={handleAddItem}
-                                                            disabled={loading || !selectedItem || quantity <= 0}
+                                                            variant="outline-primary"
+                                                            onClick={handleLookupItem}
+                                                            disabled={loading || !modelNumber.trim()}
                                                             className="fw-semibold"
                                                         >
-                                                            <i className="bi bi-plus-circle me-2"></i>
-                                                            Add Item
+                                                            <i className="bi bi-search me-2"></i>
+                                                            Find Item
                                                         </Button>
                                                     </div>
                                                 </Form.Group>
@@ -348,7 +326,7 @@ const BillCreate: React.FC = () => {
                                         </Row>
 
                                         {/* Selected Item Details */}
-                                        {selectedItem && getSelectedItemDetails(selectedItem) && (
+                                        {selectedItem && (
                                             <div className="alert alert-light border mb-4">
                                                 <Row className="g-2">
                                                     <Col xs={12}>
@@ -356,25 +334,36 @@ const BillCreate: React.FC = () => {
                                                     </Col>
                                                     <Col md={3}>
                                                         <small className="text-muted">Name:</small>
-                                                        <p className="fw-semibold mb-0">{getSelectedItemDetails(selectedItem)?.name}</p>
+                                                        <p className="fw-semibold mb-0">{selectedItem.name}</p>
                                                     </Col>
                                                     <Col md={3}>
                                                         <small className="text-muted">Category:</small>
-                                                        <p className="fw-semibold mb-0">{getSelectedItemDetails(selectedItem)?.category.name}</p>
+                                                        <p className="fw-semibold mb-0">{selectedItem.category.name}</p>
                                                     </Col>
                                                     <Col md={3}>
                                                         <small className="text-muted">Stock:</small>
-                                                        <p className="fw-semibold mb-0">{getSelectedItemDetails(selectedItem)?.quantity}</p>
+                                                        <p className="fw-semibold mb-0">{selectedItem.quantity}</p>
                                                     </Col>
                                                     <Col md={3}>
                                                         <small className="text-muted">
                                                             {billType === 'buy' ? 'Buying Price' : 'Selling Price'}:
                                                         </small>
                                                         <p className="fw-semibold mb-0">
-                                                            ₨ {Number(billType === 'buy' ? getSelectedItemDetails(selectedItem)?.buying_price : getSelectedItemDetails(selectedItem)?.selling_price || 0).toFixed(2)}
+                                                            ₨ {Number(billType === 'buy' ? selectedItem.buying_price : selectedItem.selling_price).toFixed(2)}
                                                         </p>
                                                     </Col>
                                                 </Row>
+                                                <div className="mt-3">
+                                                    <Button
+                                                        variant="primary"
+                                                        onClick={handleAddItem}
+                                                        disabled={loading || quantity <= 0}
+                                                        className="fw-semibold"
+                                                    >
+                                                        <i className="bi bi-plus-circle me-2"></i>
+                                                        Add Item
+                                                    </Button>
+                                                </div>
                                             </div>
                                         )}
                                     </Form>

@@ -34,6 +34,7 @@ const Items: React.FC = () => {
     // QR Code modal state
     const [showQRModal, setShowQRModal] = useState(false);
     const [selectedItemQR, setSelectedItemQR] = useState<Item | null>(null);
+    const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null);
 
     // Load items and categories on component mount
     useEffect(() => {
@@ -208,15 +209,53 @@ const Items: React.FC = () => {
         setShowQRModal(true);
     };
 
+    useEffect(() => {
+        let objectUrl: string | null = null;
+
+        const loadQrPreview = async () => {
+            if (!selectedItemQR || !showQRModal) {
+                setQrPreviewUrl(null);
+                return;
+            }
+
+            try {
+                const response = await fetch(itemService.getQrCodeUrl(selectedItemQR.id), {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load QR preview');
+                }
+
+                const blob = await response.blob();
+                objectUrl = window.URL.createObjectURL(blob);
+                setQrPreviewUrl(objectUrl);
+            } catch (err) {
+                setQrPreviewUrl(null);
+                console.error(err);
+            }
+        };
+
+        void loadQrPreview();
+
+        return () => {
+            if (objectUrl) {
+                window.URL.revokeObjectURL(objectUrl);
+            }
+        };
+    }, [selectedItemQR, showQRModal]);
+
     const handleDownloadQRCode = async () => {
         if (!selectedItemQR) return;
 
         try {
             const response = await fetch(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/items/${selectedItemQR.id}/qr-code`,
+                itemService.getQrCodeUrl(selectedItemQR.id),
                 {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
                     }
                 }
             );
@@ -487,7 +526,7 @@ const Items: React.FC = () => {
                                         onFocus={() => setQuantityFocused(true)}
                                         onBlur={() => {
                                             setQuantityFocused(false);
-                                            if (formData.quantity === 0 || formData.quantity === '') {
+                                            if (formData.quantity === 0) {
                                                 setFormData(prev => ({ ...prev, quantity: 0 }));
                                             }
                                         }}
@@ -518,7 +557,7 @@ const Items: React.FC = () => {
                                             onFocus={() => setBuyingPriceFocused(true)}
                                             onBlur={() => {
                                                 setBuyingPriceFocused(false);
-                                                if (formData.buying_price === 0 || formData.buying_price === '') {
+                                                if (formData.buying_price === 0) {
                                                     setFormData(prev => ({ ...prev, buying_price: 0 }));
                                                 }
                                             }}
@@ -548,7 +587,7 @@ const Items: React.FC = () => {
                                             onFocus={() => setSellingPriceFocused(true)}
                                             onBlur={() => {
                                                 setSellingPriceFocused(false);
-                                                if (formData.selling_price === 0 || formData.selling_price === '') {
+                                                if (formData.selling_price === 0) {
                                                     setFormData(prev => ({ ...prev, selling_price: 0 }));
                                                 }
                                             }}
@@ -638,7 +677,7 @@ const Items: React.FC = () => {
                         <>
                             <div className="mb-4">
                                 <img
-                                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/items/${selectedItemQR.id}/qr-code`}
+                                    src={qrPreviewUrl || ''}
                                     alt={`QR Code for ${selectedItemQR.model_number}`}
                                     style={{ maxWidth: '300px', height: 'auto' }}
                                     onError={(e) => {

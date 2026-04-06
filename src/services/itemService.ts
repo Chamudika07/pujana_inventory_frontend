@@ -1,5 +1,6 @@
 import apiClient from './api';
 import type { Item, ItemCreate, ItemUpdate } from '../types/item';
+import { buildApiUrl } from './api';
 
 export const itemService = {
   async getAll(): Promise<Item[]> {
@@ -28,11 +29,19 @@ export const itemService = {
 
   async searchByModel(modelNumber: string): Promise<Item | null> {
     try {
-      const items = await this.getAll();
-      return items.find(item => item.model_number === modelNumber) || null;
+      return await this.getByModelNumber(modelNumber);
     } catch (error) {
       console.error('Error searching item:', error);
       return null;
     }
+  },
+
+  async getByModelNumber(modelNumber: string): Promise<Item> {
+    const response = await apiClient.get(`/items/by-model/${encodeURIComponent(modelNumber)}`);
+    return response.data;
+  },
+
+  getQrCodeUrl(itemId: number): string {
+    return buildApiUrl(`/items/${itemId}/qr-code`);
   },
 };

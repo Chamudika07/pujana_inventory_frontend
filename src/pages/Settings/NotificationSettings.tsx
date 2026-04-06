@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Button, Form, Alert, Spinner, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+import { alertService } from '../../services/alertService';
+import type { UserPreferences } from '../../types/alert';
 
 const NotificationSettings: React.FC = () => {
     const navigate = useNavigate();
@@ -13,7 +12,7 @@ const NotificationSettings: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const [settings, setSettings] = useState({
+    const [settings, setSettings] = useState<UserPreferences>({
         notification_email: '',
         phone_number: '',
         notification_enabled: true,
@@ -24,24 +23,12 @@ const NotificationSettings: React.FC = () => {
         loadPreferences();
     }, []);
 
-    const getAuthToken = () => {
-        return localStorage.getItem('access_token') || localStorage.getItem('token');
-    };
-
     const loadPreferences = async () => {
         try {
             setLoading(true);
             setError(null);
-            const token = getAuthToken();
-            const response = await axios.get(
-                `${API_BASE_URL}/alerts/preferences/get`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
-            setSettings(response.data);
+            const response = await alertService.getPreferences();
+            setSettings(response);
         } catch (err) {
             setError('Failed to load notification settings');
             console.error(err);
@@ -50,18 +37,18 @@ const NotificationSettings: React.FC = () => {
         }
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target as HTMLInputElement;
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type } = e.target;
 
         if (type === 'checkbox') {
             setSettings(prev => ({
                 ...prev,
-                [name]: (e.target as HTMLInputElement).checked
+                [name]: e.target.checked
             }));
         } else {
             setSettings(prev => ({
                 ...prev,
-                [name]: name === 'alert_threshold' ? parseInt(value) : value
+                [name]: name === 'alert_threshold' ? parseInt(value || '0', 10) : value
             }));
         }
     };
@@ -78,16 +65,7 @@ const NotificationSettings: React.FC = () => {
                 return;
             }
 
-            const token = getAuthToken();
-            await axios.put(
-                `${API_BASE_URL}/alerts/preferences/update`,
-                settings,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
+            await alertService.updatePreferences(settings);
 
             setSuccess('✅ Notification settings saved successfully!');
         } catch (err: any) {
@@ -111,18 +89,9 @@ const NotificationSettings: React.FC = () => {
                 return;
             }
 
-            const token = getAuthToken();
-            const response = await axios.post(
-                `${API_BASE_URL}/alerts/test-email`,
-                {},
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
+            const response = await alertService.sendTestEmail();
 
-            setSuccess(`✅ ${response.data.message} Check your email at ${response.data.recipient}`);
+            setSuccess(`✅ ${response.message} Check your email at ${response.recipient ?? settings.notification_email}`);
         } catch (err: any) {
             const errorMsg = err.response?.data?.detail || 'Failed to send test email';
             setError(`❌ ${errorMsg}`);

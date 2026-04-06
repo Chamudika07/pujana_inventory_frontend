@@ -14,7 +14,7 @@ interface AuthStore {
   logout: () => void;
   setUser: (user: User | null) => void;
   clearError: () => void;
-  initializeAuth: () => void;
+  initializeAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -29,7 +29,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const response = await authService.login(email, password);
       authService.setToken(response.access_token);
-      set({ isAuthenticated: true, isLoading: false, error: null });
+      const user = await authService.getCurrentUser();
+      set({ user, isAuthenticated: true, isLoading: false, error: null, isInitialized: true });
     } catch (error: any) {
       let errorMessage = 'Login failed';
       if (error.response?.data?.detail) {
@@ -99,13 +100,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ error: null });
   },
 
-  initializeAuth: () => {
+  initializeAuth: async () => {
     const token = authService.getToken();
-    if (token) {
-      set({ isAuthenticated: true, isInitialized: true });
-    } else {
+    if (!token) {
       set({ isAuthenticated: false, isInitialized: true });
+      return;
+    }
+
+    try {
+      const user = await authService.getCurrentUser();
+      set({ user, isAuthenticated: true, isInitialized: true, error: null });
+    } catch {
+      authService.logout();
+      set({ user: null, isAuthenticated: false, isInitialized: true });
     }
   },
 }));
-

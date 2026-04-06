@@ -6,7 +6,7 @@ export const useAuth = () => {
 
   useEffect(() => {
     // Initialize auth state from localStorage on mount
-    initializeAuth();
+    void initializeAuth();
   }, [initializeAuth]);
 
   return { isAuthenticated, isCheckingAuth: !isInitialized };

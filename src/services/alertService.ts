@@ -1,51 +1,18 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
-export interface Alert {
-    id: string;
-    item_id: string;
-    item_name: string;
-    current_stock: number;
-    minimum_stock: number;
-    status: 'active' | 'resolved';
-    created_at: string;
-    resolved_at?: string;
-}
-
-export interface AlertStats {
-    total_alerts: number;
-    active_alerts: number;
-    resolved_alerts: number;
-}
-
-// Get auth token from localStorage
-const getAuthToken = () => {
-    return localStorage.getItem('access_token') || localStorage.getItem('token');
-};
-
-// Create axios instance with auth header
-const apiClient = axios.create({
-    baseURL: API_BASE_URL,
-});
-
-// Add token to every request
-apiClient.interceptors.request.use((config) => {
-    const token = getAuthToken();
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+import apiClient from './api';
+import type { AlertStats, LowStockAlert, UserPreferences } from '../types/alert';
 
 export const alertService = {
-    getAll: async (): Promise<Alert[]> => {
-        const response = await apiClient.get('/alerts');
+    getAll: async (showResolved = true): Promise<LowStockAlert[]> => {
+        const response = await apiClient.get('/alerts/', {
+            params: { show_resolved: showResolved },
+        });
         return response.data;
     },
 
-    getActive: async (): Promise<Alert[]> => {
-        const response = await apiClient.get('/alerts?show_resolved=false');
+    getActive: async (): Promise<LowStockAlert[]> => {
+        const response = await apiClient.get('/alerts/', {
+            params: { show_resolved: false },
+        });
         return response.data;
     },
 
@@ -54,12 +21,27 @@ export const alertService = {
         return response.data;
     },
 
-    resolveAlert: async (alertId: string): Promise<Alert> => {
+    resolveAlert: async (alertId: number): Promise<LowStockAlert> => {
         const response = await apiClient.patch(`/alerts/${alertId}/resolve`);
         return response.data;
     },
 
-    deleteAlert: async (alertId: string): Promise<void> => {
+    deleteAlert: async (alertId: number): Promise<void> => {
         await apiClient.delete(`/alerts/${alertId}`);
-    }
+    },
+
+    getPreferences: async (): Promise<UserPreferences> => {
+        const response = await apiClient.get('/alerts/preferences/get');
+        return response.data;
+    },
+
+    updatePreferences: async (preferences: UserPreferences): Promise<UserPreferences & { message: string }> => {
+        const response = await apiClient.put('/alerts/preferences/update', preferences);
+        return response.data;
+    },
+
+    sendTestEmail: async (): Promise<{ message: string; recipient?: string }> => {
+        const response = await apiClient.post('/alerts/test-email');
+        return response.data;
+    },
 };

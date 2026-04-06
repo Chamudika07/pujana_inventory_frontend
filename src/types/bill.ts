@@ -1,5 +1,3 @@
-import { Item } from './item';
-
 export interface Bill {
   id: number;
   bill_id: string;
@@ -11,10 +9,10 @@ export interface BillResponse {
   bill_id: string;
   bill_type: 'buy' | 'sell';
   message: string;
+  total_items: number;
 }
 
-export interface BillItemAction {
-  bill_id: string;
+export interface BillCreateItem {
   model_number: string;
   quantity: number;
 }

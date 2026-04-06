@@ -16,6 +16,11 @@ export const authService = {
     return response.data;
   },
 
+  async getCurrentUser(): Promise<User> {
+    const response = await apiClient.get('/users/me');
+    return response.data;
+  },
+
   async logout(): Promise<void> {
     localStorage.removeItem('access_token');
   },

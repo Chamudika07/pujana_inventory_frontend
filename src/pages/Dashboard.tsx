@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
-import { FiBox, FiBell, FiShoppingCart, FiTrendingUp } from 'react-icons/fi';
+import { FiBox, FiBell, FiShoppingCart } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { useItemStore } from '@stores/itemStore';
 import { alertService } from '@services/alertService';
@@ -14,8 +14,6 @@ const formatPrice = (price: number): string => {
 const Dashboard: React.FC = () => {
     const { items, fetchItems, isLoading } = useItemStore();
     const [alertStats, setAlertStats] = useState<AlertStats | null>(null);
-    const [statsLoading, setStatsLoading] = useState(true);
-
     useEffect(() => {
         fetchItems();
         loadAlertStats();
@@ -27,8 +25,6 @@ const Dashboard: React.FC = () => {
             setAlertStats(stats);
         } catch (error) {
             console.error('Error loading alert stats:', error);
-        } finally {
-            setStatsLoading(false);
         }
     };
 

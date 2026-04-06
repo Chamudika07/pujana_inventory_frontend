@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Button, Table, Alert, Spinner, Row, Col, Form, Badge } from 'react-bootstrap';
 import { alertService } from '../../services/alertService';
-import type { Alert as AlertType } from '../../services/alertService';
+import type { LowStockAlert } from '../../types/alert';
 
 const Alerts: React.FC = () => {
-    const [alerts, setAlerts] = useState<AlertType[]>([]);
-    const [filteredAlerts, setFilteredAlerts] = useState<AlertType[]>([]);
+    const [alerts, setAlerts] = useState<LowStockAlert[]>([]);
+    const [filteredAlerts, setFilteredAlerts] = useState<LowStockAlert[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -37,7 +37,9 @@ const Alerts: React.FC = () => {
         let filtered = alerts;
 
         if (filterStatus !== 'all') {
-            filtered = filtered.filter(alert => alert.status === filterStatus);
+            filtered = filtered.filter(alert =>
+                filterStatus === 'active' ? !alert.is_resolved : alert.is_resolved
+            );
         }
 
         // Sort by created_at descending
@@ -46,7 +48,7 @@ const Alerts: React.FC = () => {
         setFilteredAlerts(filtered);
     };
 
-    const handleResolveAlert = async (alertId: string) => {
+    const handleResolveAlert = async (alertId: number) => {
         try {
             setError(null);
             await alertService.resolveAlert(alertId);
@@ -58,7 +60,7 @@ const Alerts: React.FC = () => {
         }
     };
 
-    const handleDeleteAlert = async (alertId: string) => {
+    const handleDeleteAlert = async (alertId: number) => {
         if (window.confirm('Are you sure you want to delete this alert?')) {
             try {
                 setError(null);
@@ -132,7 +134,7 @@ const Alerts: React.FC = () => {
                                     <tr>
                                         <th className="fw-semibold">Item Name</th>
                                         <th className="fw-semibold">Current Stock</th>
-                                        <th className="fw-semibold">Minimum Stock</th>
+                                        <th className="fw-semibold">Model #</th>
                                         <th className="fw-semibold">Status</th>
                                         <th className="fw-semibold">Created Date</th>
                                         <th className="fw-semibold text-center">Actions</th>
@@ -141,14 +143,14 @@ const Alerts: React.FC = () => {
                                 <tbody>
                                     {filteredAlerts.map(alert => (
                                         <tr key={alert.id}>
-                                            <td className="fw-semibold">{alert.item_name}</td>
+                                            <td className="fw-semibold">{alert.item.name}</td>
                                             <td>
-                                                <span className="badge bg-danger">{alert.current_stock}</span>
+                                                <span className="badge bg-danger">{alert.quantity_at_alert}</span>
                                             </td>
-                                            <td>{alert.minimum_stock}</td>
+                                            <td>{alert.item.model_number}</td>
                                             <td>
-                                                <Badge bg={alert.status === 'active' ? 'warning' : 'success'}>
-                                                    {alert.status.toUpperCase()}
+                                                <Badge bg={alert.is_resolved ? 'success' : 'warning'}>
+                                                    {alert.is_resolved ? 'RESOLVED' : 'ACTIVE'}
                                                 </Badge>
                                             </td>
                                             <td className="text-muted">
@@ -161,7 +163,7 @@ const Alerts: React.FC = () => {
                                                 })}
                                             </td>
                                             <td className="text-center">
-                                                {alert.status === 'active' && (
+                                                {!alert.is_resolved && (
                                                     <Button
                                                         variant="outline-success"
                                                         size="sm"
