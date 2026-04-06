@@ -9,7 +9,7 @@ export interface Bill {
 
 export interface BillResponse {
   bill_id: string;
-  bull_type: 'buy' | 'sell';
+  bill_type: 'buy' | 'sell';
   message: string;
 }
 

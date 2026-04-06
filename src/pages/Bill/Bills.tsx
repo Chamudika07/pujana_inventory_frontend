@@ -11,11 +11,10 @@ import {
     Spinner,
     Row,
     Col,
-    Badge,
-    ListGroup
+    Badge
 } from 'react-bootstrap';
 import { billService } from '../../services/billService';
-import type { Bill, PrintBillResponse } from '../../types/bill';
+import type { Bill } from '../../types/bill';
 
 const Bills: React.FC = () => {
     const navigate = useNavigate();
@@ -29,9 +28,6 @@ const Bills: React.FC = () => {
 
     // Modal states
     const [showBillModal, setShowBillModal] = useState(false);
-    const [showPrintModal, setShowPrintModal] = useState(false);
-    const [billData, setBillData] = useState<PrintBillResponse | null>(null);
-
     // Load bills and items on component mount
     useEffect(() => {
         loadData();
@@ -79,18 +75,10 @@ const Bills: React.FC = () => {
     const handleViewBill = async (billId: string) => {
         try {
             setError(null);
-            const data = await billService.printBill(billId);
-            setBillData(data);
-            setShowPrintModal(true);
+            await billService.printBill(billId);
         } catch (err) {
-            setError('Failed to load bill details');
+            setError('Failed to download bill PDF');
             console.error(err);
-        }
-    };
-
-    const handlePrint = () => {
-        if (billData) {
-            window.print();
         }
     };
 
@@ -203,15 +191,15 @@ const Bills: React.FC = () => {
                                                     size="sm"
                                                     onClick={() => handleViewBill(bill.bill_id)}
                                                     className="me-2"
-                                                    title="View Details"
+                                                    title="Download PDF"
                                                 >
-                                                    <i className="bi bi-eye"></i>
+                                                    <i className="bi bi-download"></i>
                                                 </Button>
                                                 <Button
                                                     variant="outline-secondary"
                                                     size="sm"
-                                                    onClick={() => handlePrint()}
-                                                    title="Print"
+                                                    onClick={() => handleViewBill(bill.bill_id)}
+                                                    title="Print / Download PDF"
                                                 >
                                                     <i className="bi bi-printer"></i>
                                                 </Button>
@@ -260,84 +248,6 @@ const Bills: React.FC = () => {
                 </Modal.Body>
             </Modal>
 
-            {/* Bill Preview/Print Modal */}
-            <Modal show={showPrintModal} onHide={() => setShowPrintModal(false)} size="lg" centered>
-                <Modal.Header closeButton className="bg-light">
-                    <Modal.Title>Bill Details</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {billData && (
-                        <div className="bill-preview">
-                            <div className="text-center mb-4">
-                                <h4 className="fw-bold mb-1">PUJANA ELECTRICAL</h4>
-                                <small className="text-muted">Bill ID: {billData.bill_id}</small>
-                            </div>
-
-                            <div className="mb-3">
-                                <Row>
-                                    <Col xs={6}>
-                                        <small className="text-muted">Bill Type:</small>
-                                        <p className="fw-semibold">
-                                            <Badge bg={billData.bill_type === 'buy' ? 'info' : 'success'}>
-                                                {billData.bill_type.toUpperCase()}
-                                            </Badge>
-                                        </p>
-                                    </Col>
-                                    <Col xs={6} className="text-end">
-                                        <small className="text-muted">Date:</small>
-                                        <p className="fw-semibold">{new Date().toLocaleDateString()}</p>
-                                    </Col>
-                                </Row>
-                            </div>
-
-                            <hr />
-
-                            <div className="mb-3">
-                                <h6 className="fw-bold mb-2">Items</h6>
-                                <ListGroup variant="flush">
-                                    {billData.items.map((item, index) => (
-                                        <ListGroup.Item key={`${billData.bill_id}-${index}`} className="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <p className="fw-semibold mb-1">{item.item}</p>
-                                                <small className="text-muted">
-                                                    {item.quantity} × ₨ {Number(item.price).toFixed(2)}
-                                                </small>
-                                            </div>
-                                            <div className="text-end">
-                                                <p className="fw-semibold mb-0">₨ {Number(item.total).toFixed(2)}</p>
-                                            </div>
-                                        </ListGroup.Item>
-                                    ))}
-                                </ListGroup>
-                            </div>
-
-                            <hr className="border-2" />
-
-                            <div className="text-end">
-                                <p className="mb-1">
-                                    <span className="fw-semibold">Grand Total:</span>
-                                    <span className="fw-bold ms-2 fs-5">₨ {Number(billData.grand_total).toFixed(2)}</span>
-                                </p>
-                            </div>
-
-                            <hr />
-
-                            <div className="text-center text-muted small mt-4">
-                                <p>Thank you for your business!</p>
-                            </div>
-                        </div>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowPrintModal(false)}>
-                        Close
-                    </Button>
-                    <Button variant="primary" onClick={handlePrint} className="fw-semibold">
-                        <i className="bi bi-printer me-2"></i>
-                        Print Bill
-                    </Button>
-                </Modal.Footer>
-            </Modal>
         </Container>
     );
 };
