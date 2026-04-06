@@ -1,5 +1,6 @@
 import apiClient from './api';
 import type { CustomerDetail, CustomerFormData, CustomerListItem } from '../types/customer';
+import type { CustomerDueSummary, CustomerLedger } from '../types/bill';
 
 export const customerService = {
   async getAll(includeInactive = false): Promise<CustomerListItem[]> {
@@ -33,5 +34,15 @@ export const customerService = {
 
   async delete(id: number): Promise<void> {
     await apiClient.delete(`/customers/${id}`);
+  },
+
+  async getLedger(id: number): Promise<CustomerLedger> {
+    const response = await apiClient.get(`/customers/${id}/ledger`);
+    return response.data;
+  },
+
+  async getDueSummary(id: number): Promise<CustomerDueSummary> {
+    const response = await apiClient.get(`/customers/${id}/due-summary`);
+    return response.data;
   },
 };

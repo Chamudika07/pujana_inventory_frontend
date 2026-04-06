@@ -19,7 +19,6 @@ const defaultFormData: CustomerFormData = {
   customer_type: 'retail',
   notes: '',
   loyalty_points: 0,
-  due_balance: 0,
   is_active: true,
 };
 
@@ -49,7 +48,6 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
         customer_type: customer.customer_type,
         notes: customer.notes || '',
         loyalty_points: customer.loyalty_points,
-        due_balance: customer.due_balance,
         is_active: customer.is_active,
       });
       return;
@@ -71,7 +69,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       return;
     }
 
-    if (name === 'loyalty_points' || name === 'due_balance') {
+    if (name === 'loyalty_points') {
       setFormData((prev) => ({
         ...prev,
         [name]: Number(value),
@@ -160,19 +158,6 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                   min="0"
                   name="loyalty_points"
                   value={formData.loyalty_points}
-                  onChange={handleChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="fw-semibold">Due Balance</Form.Label>
-                <Form.Control
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  name="due_balance"
-                  value={formData.due_balance}
                   onChange={handleChange}
                 />
               </Form.Group>

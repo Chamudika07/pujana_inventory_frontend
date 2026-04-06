@@ -1,38 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Alert, Badge, Button, Card, Col, Container, Row, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Row, Spinner, Table } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+
+import PaymentModal from '../../components/Bill/PaymentModal';
 import CustomerFormModal from '../../components/Customer/CustomerFormModal';
 import { customerService } from '../../services/customerService';
+import { paymentService } from '../../services/paymentService';
 import type { CustomerDetail as CustomerDetailType, CustomerFormData } from '../../types/customer';
+import type { CustomerLedger } from '../../types/bill';
+import { formatCurrency, formatDateTime, paymentStatusLabel, paymentStatusVariant } from '../../utils/finance';
 
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState<CustomerDetailType | null>(null);
+  const [ledger, setLedger] = useState<CustomerLedger | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      void loadCustomer(Number(id));
+  const customerId = Number(id);
+
+  const loadCustomerData = async () => {
+    if (!customerId) {
+      return;
     }
-  }, [id]);
 
-  const loadCustomer = async (customerId: number) => {
     try {
       setLoading(true);
       setError(null);
-      setCustomer(await customerService.getById(customerId));
-    } catch (err) {
-      setError('Failed to load customer');
-      console.error(err);
+      const [customerDetail, ledgerResponse] = await Promise.all([
+        customerService.getById(customerId),
+        customerService.getLedger(customerId),
+      ]);
+      setCustomer(customerDetail);
+      setLedger(ledgerResponse);
+    } catch (loadError) {
+      setError('Failed to load customer ledger');
+      console.error(loadError);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    void loadCustomerData();
+  }, [customerId]);
 
   const handleSubmit = async (payload: CustomerFormData) => {
     if (!customer) {
@@ -42,14 +61,35 @@ const CustomerDetail: React.FC = () => {
     try {
       setSaving(true);
       setModalError(null);
-      const updatedCustomer = await customerService.update(customer.id, payload);
-      setCustomer(updatedCustomer);
+      await customerService.update(customer.id, payload);
       setShowModal(false);
-    } catch (err: any) {
-      const message = err.response?.data?.detail || 'Failed to update customer';
-      setModalError(typeof message === 'string' ? message : JSON.stringify(message));
+      await loadCustomerData();
+    } catch (submitError: any) {
+      setModalError(submitError.response?.data?.detail || 'Failed to update customer');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePaymentSubmit = async (payload: any) => {
+    if (!customer) {
+      return;
+    }
+
+    try {
+      setPaymentSaving(true);
+      setPaymentError(null);
+      await paymentService.addCustomerPayment({
+        customer_id: customer.id,
+        ...payload,
+      });
+      toast.success('Customer payment recorded.');
+      setShowPaymentModal(false);
+      await loadCustomerData();
+    } catch (submitError: any) {
+      setPaymentError(submitError.response?.data?.detail || 'Failed to record payment');
+    } finally {
+      setPaymentSaving(false);
     }
   };
 
@@ -60,10 +100,10 @@ const CustomerDetail: React.FC = () => {
 
     try {
       await customerService.delete(customer.id);
-      await loadCustomer(customer.id);
-    } catch (err) {
+      await loadCustomerData();
+    } catch (deleteError) {
       setError('Failed to deactivate customer');
-      console.error(err);
+      console.error(deleteError);
     }
   };
 
@@ -75,7 +115,7 @@ const CustomerDetail: React.FC = () => {
     );
   }
 
-  if (!customer) {
+  if (!customer || !ledger) {
     return (
       <Container fluid className="py-4">
         <Alert variant="danger">{error || 'Customer not found'}</Alert>
@@ -92,16 +132,17 @@ const CustomerDetail: React.FC = () => {
             Back to Customers
           </Button>
           <h1 className="h2 fw-bold mb-1">{customer.full_name}</h1>
-          <p className="text-muted mb-0">Customer details and purchase summary</p>
+          <p className="text-muted mb-0">Customer ledger, receivable history, and payment activity.</p>
         </div>
         <div className="d-flex gap-2">
+          <Button variant="success" onClick={() => setShowPaymentModal(true)}>
+            Record Payment
+          </Button>
           <Button variant="outline-primary" onClick={() => setShowModal(true)}>
-            <i className="bi bi-pencil-square me-2"></i>
             Edit
           </Button>
           {customer.is_active && (
             <Button variant="outline-danger" onClick={() => void handleDeactivate()}>
-              <i className="bi bi-person-dash me-2"></i>
               Deactivate
             </Button>
           )}
@@ -110,13 +151,13 @@ const CustomerDetail: React.FC = () => {
 
       {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
 
-      <Row className="g-4">
+      <Row className="g-4 mb-4">
         <Col lg={8}>
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm h-100">
             <Card.Body>
               <Row className="g-4">
                 <Col md={6}>
-                  <small className="text-muted d-block">Phone Number</small>
+                  <small className="text-muted d-block">Phone</small>
                   <div className="fw-semibold">{customer.phone_number}</div>
                 </Col>
                 <Col md={6}>
@@ -147,29 +188,81 @@ const CustomerDetail: React.FC = () => {
         </Col>
 
         <Col lg={4}>
-          <Card className="border-0 shadow-sm mb-4">
+          <Card className="border-0 shadow-sm">
             <Card.Body>
-              <h5 className="fw-bold mb-3">Purchase Summary</h5>
+              <h5 className="fw-bold mb-3">Receivable Summary</h5>
               <div className="mb-3">
-                <small className="text-muted d-block">Linked Sell Bills</small>
-                <div className="fs-4 fw-bold">{customer.summary.number_of_bills}</div>
+                <small className="text-muted d-block">Total Billed</small>
+                <div className="fs-4 fw-bold">{formatCurrency(ledger.summary.total_billed)}</div>
               </div>
               <div className="mb-3">
-                <small className="text-muted d-block">Total Purchases</small>
-                <div className="fs-4 fw-bold">Rs. {Number(customer.summary.total_purchases).toFixed(2)}</div>
+                <small className="text-muted d-block">Total Paid</small>
+                <div className="fs-4 fw-bold">{formatCurrency(ledger.summary.total_paid)}</div>
               </div>
               <div className="mb-3">
-                <small className="text-muted d-block">Due Balance</small>
-                <div className="fs-4 fw-bold">Rs. {Number(customer.summary.due_balance).toFixed(2)}</div>
+                <small className="text-muted d-block">Outstanding</small>
+                <div className="fs-4 fw-bold">{formatCurrency(ledger.summary.total_outstanding)}</div>
               </div>
               <div>
-                <small className="text-muted d-block">Loyalty Points</small>
-                <div className="fs-4 fw-bold">{customer.loyalty_points}</div>
+                <small className="text-muted d-block">Unpaid / Partial Bills</small>
+                <div className="fs-5 fw-bold">
+                  {ledger.summary.unpaid_bills_count} unpaid, {ledger.summary.partially_paid_bills_count} partial
+                </div>
               </div>
             </Card.Body>
           </Card>
         </Col>
       </Row>
+
+      <Card className="border-0 shadow-sm">
+        <Card.Header className="bg-light">
+          <h5 className="mb-0 fw-bold">Ledger History</h5>
+        </Card.Header>
+        <Card.Body className="p-0">
+          {ledger.entries.length === 0 ? (
+            <div className="text-center py-5 text-muted">No ledger activity yet.</div>
+          ) : (
+            <div className="table-responsive">
+              <Table hover className="mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Date</th>
+                    <th>Entry</th>
+                    <th>Reference</th>
+                    <th>Total</th>
+                    <th>Paid</th>
+                    <th>Due</th>
+                    <th>Running Balance</th>
+                    <th>Status / Method</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.entries.map((entry) => (
+                    <tr key={`${entry.entry_type}-${entry.bill_id || 'x'}-${entry.payment_id || 'x'}-${entry.happened_at}`}>
+                      <td>{formatDateTime(entry.happened_at)}</td>
+                      <td className="fw-semibold">{entry.entry_type === 'bill' ? 'Bill' : 'Payment'}</td>
+                      <td>{entry.bill_code || entry.reference_number || '-'}</td>
+                      <td>{entry.total_amount != null ? formatCurrency(entry.total_amount) : '-'}</td>
+                      <td>{entry.entry_type === 'payment' ? formatCurrency(entry.amount) : entry.paid_amount != null ? formatCurrency(entry.paid_amount) : '-'}</td>
+                      <td>{entry.due_amount != null ? formatCurrency(entry.due_amount) : '-'}</td>
+                      <td>{formatCurrency(entry.running_balance)}</td>
+                      <td>
+                        {entry.payment_status ? (
+                          <Badge bg={paymentStatusVariant(entry.payment_status)}>
+                            {paymentStatusLabel(entry.payment_status)}
+                          </Badge>
+                        ) : (
+                          <Badge bg="info">{entry.payment_method?.replace('_', ' ').toUpperCase() || 'PAYMENT'}</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Card.Body>
+      </Card>
 
       <CustomerFormModal
         show={showModal}
@@ -181,6 +274,19 @@ const CustomerDetail: React.FC = () => {
           setModalError(null);
         }}
         onSubmit={handleSubmit}
+      />
+
+      <PaymentModal
+        show={showPaymentModal}
+        title={`Record Payment - ${customer.full_name}`}
+        outstandingAmount={ledger.summary.total_outstanding}
+        loading={paymentSaving}
+        error={paymentError}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setPaymentError(null);
+        }}
+        onSubmit={handlePaymentSubmit}
       />
     </Container>
   );

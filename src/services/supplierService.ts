@@ -1,5 +1,6 @@
 import apiClient from './api';
 import type { SupplierDetail, SupplierFormData, SupplierListItem } from '../types/supplier';
+import type { SupplierLedger, SupplierPayableSummary } from '../types/bill';
 
 export const supplierService = {
   async getAll(includeInactive = false): Promise<SupplierListItem[]> {
@@ -33,5 +34,15 @@ export const supplierService = {
 
   async delete(id: number): Promise<void> {
     await apiClient.delete(`/suppliers/${id}`);
+  },
+
+  async getLedger(id: number): Promise<SupplierLedger> {
+    const response = await apiClient.get(`/suppliers/${id}/ledger`);
+    return response.data;
+  },
+
+  async getPayableSummary(id: number): Promise<SupplierPayableSummary> {
+    const response = await apiClient.get(`/suppliers/${id}/payable-summary`);
+    return response.data;
   },
 };

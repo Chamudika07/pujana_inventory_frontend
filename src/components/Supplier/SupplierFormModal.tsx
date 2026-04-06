@@ -19,7 +19,6 @@ const defaultFormData: SupplierFormData = {
   email: '',
   address: '',
   notes: '',
-  payable_balance: 0,
   is_active: true,
 };
 
@@ -47,7 +46,6 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
         email: supplier.email || '',
         address: supplier.address || '',
         notes: supplier.notes || '',
-        payable_balance: supplier.payable_balance,
         is_active: supplier.is_active,
       });
       return;
@@ -65,14 +63,6 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
       setFormData((prev) => ({
         ...prev,
         [name]: (event.target as HTMLInputElement).checked,
-      }));
-      return;
-    }
-
-    if (name === 'payable_balance') {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: Number(value),
       }));
       return;
     }
@@ -159,19 +149,6 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
                   value={formData.email || ''}
                   onChange={handleChange}
                   placeholder="supplier@example.com"
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="fw-semibold">Payable Balance</Form.Label>
-                <Form.Control
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  name="payable_balance"
-                  value={formData.payable_balance}
-                  onChange={handleChange}
                 />
               </Form.Group>
             </Col>

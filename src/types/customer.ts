@@ -4,6 +4,7 @@ export interface CustomerSummary {
   number_of_bills: number;
   total_purchases: number;
   due_balance: number;
+  total_paid: number;
 }
 
 export interface CustomerBasic {
@@ -41,6 +42,5 @@ export interface CustomerFormData {
   customer_type: CustomerType;
   notes?: string;
   loyalty_points: number;
-  due_balance: number;
   is_active: boolean;
 }

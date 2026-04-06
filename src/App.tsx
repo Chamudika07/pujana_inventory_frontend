@@ -19,10 +19,14 @@ import ItemDetail from '@pages/Inventory/ItemDetail';
 import Categories from '@pages/Inventory/Categories';
 import Customers from '@pages/Customers/Customers';
 import CustomerDetail from '@pages/Customers/CustomerDetail';
+import CustomerDues from '@pages/Customers/CustomerDues';
 import Suppliers from '@pages/Suppliers/Suppliers';
 import SupplierDetail from '@pages/Suppliers/SupplierDetail';
+import SupplierPayables from '@pages/Suppliers/SupplierPayables';
 import Bills from '@pages/Bill/Bills';
 import BillCreate from '@pages/Bill/BillCreate';
+import DueBills from '@pages/Bill/DueBills';
+import PayableBills from '@pages/Bill/PayableBills';
 import Alerts from '@pages/Alerts/Alerts';
 import Settings from '@pages/Settings';
 import NotFound from '@pages/NotFound';
@@ -123,6 +127,14 @@ const App: React.FC = () => {
                             }
                         />
                         <Route
+                            path="/customer-dues"
+                            element={
+                                <ProtectedRoute>
+                                    <CustomerDues />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
                             path="/suppliers"
                             element={
                                 <ProtectedRoute>
@@ -139,6 +151,14 @@ const App: React.FC = () => {
                             }
                         />
                         <Route
+                            path="/supplier-payables"
+                            element={
+                                <ProtectedRoute>
+                                    <SupplierPayables />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
                             path="/bills"
                             element={
                                 <ProtectedRoute>
@@ -151,6 +171,22 @@ const App: React.FC = () => {
                             element={
                                 <ProtectedRoute>
                                     <BillCreate />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/due-bills"
+                            element={
+                                <ProtectedRoute>
+                                    <DueBills />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/payable-bills"
+                            element={
+                                <ProtectedRoute>
+                                    <PayableBills />
                                 </ProtectedRoute>
                             }
                         />

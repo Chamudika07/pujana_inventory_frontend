@@ -8,6 +8,8 @@ import {
     FiBell,
     FiUsers,
     FiTruck,
+    FiCreditCard,
+    FiFileText,
 } from 'react-icons/fi';
 import './Sidebar.css';
 
@@ -28,8 +30,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         { path: '/items', label: 'Items', icon: FiBox },
         { path: '/categories', label: 'Categories', icon: FiTag },
         { path: '/customers', label: 'Customers', icon: FiUsers },
+        { path: '/customer-dues', label: 'Customer Dues', icon: FiCreditCard },
         { path: '/suppliers', label: 'Suppliers', icon: FiTruck },
+        { path: '/supplier-payables', label: 'Supplier Payables', icon: FiCreditCard },
         { path: '/bills', label: 'Bills', icon: FiShoppingCart },
+        { path: '/due-bills', label: 'Due Bills', icon: FiFileText },
+        { path: '/payable-bills', label: 'Payable Bills', icon: FiFileText },
         { path: '/alerts', label: 'Alerts', icon: FiBell },
     ];
 

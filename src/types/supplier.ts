@@ -2,6 +2,7 @@ export interface SupplierSummary {
   number_of_purchase_bills: number;
   total_purchased_amount: number;
   payable_balance: number;
+  total_paid: number;
 }
 
 export interface SupplierBasic {
@@ -39,6 +40,5 @@ export interface SupplierFormData {
   email?: string;
   address?: string;
   notes?: string;
-  payable_balance: number;
   is_active: boolean;
 }
