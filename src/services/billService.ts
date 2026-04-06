@@ -11,12 +11,14 @@ export const billService = {
   async createBill(
     billType: 'buy' | 'sell',
     items: BillCreateItem[],
-    customerId?: number
+    customerId?: number,
+    supplierId?: number
   ): Promise<BillResponse> {
     const response = await apiClient.post('/bill/', {
       bill_type: billType,
       items,
       customer_id: customerId,
+      supplier_id: supplierId,
     });
     return response.data;
   },

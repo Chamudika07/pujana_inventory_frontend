@@ -163,7 +163,7 @@ const Bills: React.FC = () => {
                                     <tr>
                                         <th className="fw-semibold">Bill ID</th>
                                         <th className="fw-semibold">Type</th>
-                                        <th className="fw-semibold">Customer</th>
+                                        <th className="fw-semibold">Party</th>
                                         <th className="fw-semibold">Created Date</th>
                                         <th className="fw-semibold text-center">Actions</th>
                                     </tr>
@@ -178,7 +178,9 @@ const Bills: React.FC = () => {
                                                 </Badge>
                                             </td>
                                             <td className="text-muted">
-                                                {bill.customer?.full_name || (bill.bill_type === 'sell' ? 'Walk-in / Not linked' : 'N/A')}
+                                                {bill.bill_type === 'sell'
+                                                    ? bill.customer?.full_name || 'Walk-in / Not linked'
+                                                    : bill.supplier?.supplier_name || 'Direct stock / Not linked'}
                                             </td>
                                             <td className="text-muted">
                                                 {new Date(bill.created_at).toLocaleDateString('en-US', {

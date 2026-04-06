@@ -19,6 +19,8 @@ import ItemDetail from '@pages/Inventory/ItemDetail';
 import Categories from '@pages/Inventory/Categories';
 import Customers from '@pages/Customers/Customers';
 import CustomerDetail from '@pages/Customers/CustomerDetail';
+import Suppliers from '@pages/Suppliers/Suppliers';
+import SupplierDetail from '@pages/Suppliers/SupplierDetail';
 import Bills from '@pages/Bill/Bills';
 import BillCreate from '@pages/Bill/BillCreate';
 import Alerts from '@pages/Alerts/Alerts';
@@ -117,6 +119,22 @@ const App: React.FC = () => {
                             element={
                                 <ProtectedRoute>
                                     <CustomerDetail />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/suppliers"
+                            element={
+                                <ProtectedRoute>
+                                    <Suppliers />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/suppliers/:id"
+                            element={
+                                <ProtectedRoute>
+                                    <SupplierDetail />
                                 </ProtectedRoute>
                             }
                         />

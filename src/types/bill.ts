@@ -1,4 +1,5 @@
 import type { CustomerBasic } from './customer';
+import type { SupplierBasic } from './supplier';
 
 export interface Bill {
   id: number;
@@ -6,6 +7,8 @@ export interface Bill {
   bill_type: 'buy' | 'sell';
   customer_id?: number | null;
   customer?: CustomerBasic | null;
+  supplier_id?: number | null;
+  supplier?: SupplierBasic | null;
   created_at: string;
 }
 
@@ -25,6 +28,7 @@ export interface BillCreatePayload {
   bill_type: 'buy' | 'sell';
   items: BillCreateItem[];
   customer_id?: number;
+  supplier_id?: number;
 }
 
 export interface BillItem {

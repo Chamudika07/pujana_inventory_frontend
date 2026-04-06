@@ -16,8 +16,10 @@ import {
 import { billService } from '../../services/billService';
 import { customerService } from '../../services/customerService';
 import { itemService } from '../../services/itemService';
+import { supplierService } from '../../services/supplierService';
 import type { BillCreateItem, BillResponse } from '../../types/bill';
 import type { CustomerListItem } from '../../types/customer';
+import type { SupplierListItem } from '../../types/supplier';
 import type { Item } from '../../types/item';
 import { useDebounce } from '../../hooks';
 
@@ -47,7 +49,11 @@ const BillCreate: React.FC = () => {
     const [customerQuery, setCustomerQuery] = useState('');
     const [customerResults, setCustomerResults] = useState<CustomerListItem[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<CustomerListItem | null>(null);
+    const [supplierQuery, setSupplierQuery] = useState('');
+    const [supplierResults, setSupplierResults] = useState<SupplierListItem[]>([]);
+    const [selectedSupplier, setSelectedSupplier] = useState<SupplierListItem | null>(null);
     const debouncedCustomerQuery = useDebounce(customerQuery, 300);
+    const debouncedSupplierQuery = useDebounce(supplierQuery, 300);
 
     // Modal state
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -76,6 +82,24 @@ const BillCreate: React.FC = () => {
 
         void loadCustomers();
     }, [billType, debouncedCustomerQuery]);
+
+    useEffect(() => {
+        const loadSuppliers = async () => {
+            if (billType !== 'buy' || debouncedSupplierQuery.trim().length < 2) {
+                setSupplierResults([]);
+                return;
+            }
+
+            try {
+                const results = await supplierService.search(debouncedSupplierQuery.trim());
+                setSupplierResults(results.slice(0, 6));
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        void loadSuppliers();
+    }, [billType, debouncedSupplierQuery]);
 
     const handleLookupItem = async () => {
         if (!modelNumber.trim()) {
@@ -107,6 +131,7 @@ const BillCreate: React.FC = () => {
             setSelectedItem(null);
             setModelNumber('');
             setCustomerResults([]);
+            setSupplierResults([]);
             setSuccess(`${billType.toUpperCase()} bill draft started`);
         } catch (err) {
             setError('Failed to start bill');
@@ -167,7 +192,8 @@ const BillCreate: React.FC = () => {
             const response: BillResponse = await billService.createBill(
                 billType,
                 payload,
-                billType === 'sell' ? selectedCustomer?.id : undefined
+                billType === 'sell' ? selectedCustomer?.id : undefined,
+                billType === 'buy' ? selectedSupplier?.id : undefined
             );
             setSuccess(`Bill saved successfully with ID ${response.bill_id}`);
             // Reset form
@@ -190,6 +216,9 @@ const BillCreate: React.FC = () => {
         setSelectedCustomer(null);
         setCustomerQuery('');
         setCustomerResults([]);
+        setSelectedSupplier(null);
+        setSupplierQuery('');
+        setSupplierResults([]);
     };
 
     const calculateTotal = () => {
@@ -303,6 +332,71 @@ const BillCreate: React.FC = () => {
                                         </div>
                                     )}
 
+                                    {billType === 'buy' && (
+                                        <div className="mb-4">
+                                            <Form.Label className="fw-semibold">Supplier</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                placeholder="Search supplier by name, company or phone"
+                                                value={supplierQuery}
+                                                onChange={(e) => {
+                                                    setSupplierQuery(e.target.value);
+                                                    if (selectedSupplier) {
+                                                        setSelectedSupplier(null);
+                                                    }
+                                                }}
+                                            />
+                                            <small className="text-muted d-block mt-2">
+                                                Optional for direct purchases. Link a supplier to keep purchase history.
+                                            </small>
+                                            {supplierResults.length > 0 && !selectedSupplier && (
+                                                <ListGroup className="mt-2 shadow-sm">
+                                                    {supplierResults.map((supplier) => (
+                                                        <ListGroup.Item
+                                                            key={supplier.id}
+                                                            action
+                                                            onClick={() => {
+                                                                setSelectedSupplier(supplier);
+                                                                setSupplierQuery(supplier.supplier_name);
+                                                                setSupplierResults([]);
+                                                            }}
+                                                        >
+                                                            <div className="fw-semibold">{supplier.supplier_name}</div>
+                                                            <small className="text-muted">
+                                                                {supplier.company_name || supplier.phone_number}
+                                                            </small>
+                                                        </ListGroup.Item>
+                                                    ))}
+                                                </ListGroup>
+                                            )}
+                                            {selectedSupplier && (
+                                                <div className="alert alert-light border mt-3 mb-0">
+                                                    <div className="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div className="fw-semibold">{selectedSupplier.supplier_name}</div>
+                                                            <small className="text-muted d-block">
+                                                                {selectedSupplier.company_name || selectedSupplier.phone_number}
+                                                            </small>
+                                                            <small className="text-muted d-block">
+                                                                Payable Balance: Rs. {Number(selectedSupplier.payable_balance).toFixed(2)}
+                                                            </small>
+                                                        </div>
+                                                        <Button
+                                                            variant="outline-secondary"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setSelectedSupplier(null);
+                                                                setSupplierQuery('');
+                                                            }}
+                                                        >
+                                                            Clear
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div className="d-grid">
                                         <Button
                                             variant="primary"
@@ -347,6 +441,15 @@ const BillCreate: React.FC = () => {
                                             <small className="text-muted d-block">Selected Customer</small>
                                             <div className="fw-semibold">{selectedCustomer.full_name}</div>
                                             <small className="text-muted">{selectedCustomer.phone_number}</small>
+                                        </div>
+                                    )}
+                                    {billType === 'buy' && selectedSupplier && (
+                                        <div className="alert alert-light border text-start mb-4">
+                                            <small className="text-muted d-block">Selected Supplier</small>
+                                            <div className="fw-semibold">{selectedSupplier.supplier_name}</div>
+                                            <small className="text-muted">
+                                                {selectedSupplier.company_name || selectedSupplier.phone_number}
+                                            </small>
                                         </div>
                                     )}
                                     <div className="d-grid gap-2">
