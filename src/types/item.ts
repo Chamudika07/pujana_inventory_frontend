@@ -16,6 +16,13 @@ export interface Item {
   created_at: string;
 }
 
+export interface QrResolveResponse {
+  scanned_value: string;
+  resolved_model_number: string;
+  qr_format: string;
+  item: Item;
+}
+
 export interface ItemCreate {
   name: string;
   quantity: number;

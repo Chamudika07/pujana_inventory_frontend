@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { Item, ItemCreate, ItemUpdate } from '../types/item';
+import type { Item, ItemCreate, ItemUpdate, QrResolveResponse } from '../types/item';
 import { buildApiUrl } from './api';
 
 export const itemService = {
@@ -38,6 +38,13 @@ export const itemService = {
 
   async getByModelNumber(modelNumber: string): Promise<Item> {
     const response = await apiClient.get(`/items/by-model/${encodeURIComponent(modelNumber)}`);
+    return response.data;
+  },
+
+  async resolveQrCode(scannedValue: string): Promise<QrResolveResponse> {
+    const response = await apiClient.post('/items/resolve-qr', {
+      scanned_value: scannedValue,
+    });
     return response.data;
   },
 

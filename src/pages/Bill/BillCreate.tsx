@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Container,
@@ -17,6 +17,7 @@ import { billService } from '../../services/billService';
 import { customerService } from '../../services/customerService';
 import { itemService } from '../../services/itemService';
 import { supplierService } from '../../services/supplierService';
+import QrScannerModal from '../../components/Bill/QrScannerModal';
 import type { BillCreateItem, BillResponse } from '../../types/bill';
 import type { CustomerListItem } from '../../types/customer';
 import type { SupplierListItem } from '../../types/supplier';
@@ -57,6 +58,7 @@ const BillCreate: React.FC = () => {
 
     // Modal state
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showQrScanner, setShowQrScanner] = useState(false);
 
     // Update bill type when route parameter changes
     useEffect(() => {
@@ -101,8 +103,9 @@ const BillCreate: React.FC = () => {
         void loadSuppliers();
     }, [billType, debouncedSupplierQuery]);
 
-    const handleLookupItem = async () => {
-        if (!modelNumber.trim()) {
+    const loadItemByModelNumber = useCallback(async (nextModelNumber: string, sourceLabel: 'manual' | 'scan') => {
+        const trimmedModelNumber = nextModelNumber.trim();
+        if (!trimmedModelNumber) {
             setError('Please enter a model number');
             return;
         }
@@ -110,17 +113,39 @@ const BillCreate: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            const item = await itemService.getByModelNumber(modelNumber.trim());
+            const item = await itemService.getByModelNumber(trimmedModelNumber);
             setSelectedItem(item);
-            setSuccess(`Item ${item.model_number} loaded`);
+            setModelNumber(item.model_number);
+            setSuccess(
+                sourceLabel === 'scan'
+                    ? `Scanned item ${item.model_number} loaded`
+                    : `Item ${item.model_number} loaded`
+            );
         } catch (err: any) {
             const errorMessage = err.response?.data?.detail || 'Failed to find item';
             setSelectedItem(null);
             setError(errorMessage);
-            console.error(err);
         } finally {
             setLoading(false);
         }
+    }, []);
+
+    const handleLookupItem = async () => {
+        await loadItemByModelNumber(modelNumber, 'manual');
+    };
+
+    const handleQrDetected = useCallback(async (rawValue: string) => {
+        setError(null);
+        const resolved = await itemService.resolveQrCode(rawValue);
+        setModelNumber(resolved.resolved_model_number);
+        setSelectedItem(resolved.item);
+        setSuccess(`Scanned item ${resolved.item.model_number} loaded`);
+    }, []);
+
+    const handleOpenQrScanner = () => {
+        setError(null);
+        setSuccess(null);
+        setShowQrScanner(true);
     };
 
     const handleStartBill = async () => {
@@ -219,6 +244,7 @@ const BillCreate: React.FC = () => {
         setSelectedSupplier(null);
         setSupplierQuery('');
         setSupplierResults([]);
+        setShowQrScanner(false);
     };
 
     const calculateTotal = () => {
@@ -516,7 +542,7 @@ const BillCreate: React.FC = () => {
                                             <Col md={3}>
                                                 <Form.Group>
                                                     <Form.Label className="fw-semibold">Actions</Form.Label>
-                                                    <div className="d-grid">
+                                                    <div className="d-grid gap-2">
                                                         <Button
                                                             variant="outline-primary"
                                                             onClick={handleLookupItem}
@@ -525,6 +551,15 @@ const BillCreate: React.FC = () => {
                                                         >
                                                             <i className="bi bi-search me-2"></i>
                                                             Find Item
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline-dark"
+                                                            onClick={handleOpenQrScanner}
+                                                            disabled={loading}
+                                                            className="fw-semibold"
+                                                        >
+                                                            <i className="bi bi-qr-code-scan me-2"></i>
+                                                            Scan QR
                                                         </Button>
                                                     </div>
                                                 </Form.Group>
@@ -688,6 +723,12 @@ const BillCreate: React.FC = () => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            <QrScannerModal
+                show={showQrScanner}
+                onHide={() => setShowQrScanner(false)}
+                onDetected={handleQrDetected}
+            />
         </Container>
     );
 };
