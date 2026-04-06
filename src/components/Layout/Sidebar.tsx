@@ -6,6 +6,7 @@ import {
     FiTag,
     FiShoppingCart,
     FiBell,
+    FiUsers,
 } from 'react-icons/fi';
 import './Sidebar.css';
 
@@ -25,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         { path: '/', label: 'Dashboard', icon: FiHome },
         { path: '/items', label: 'Items', icon: FiBox },
         { path: '/categories', label: 'Categories', icon: FiTag },
+        { path: '/customers', label: 'Customers', icon: FiUsers },
         { path: '/bills', label: 'Bills', icon: FiShoppingCart },
         { path: '/alerts', label: 'Alerts', icon: FiBell },
     ];

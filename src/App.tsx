@@ -17,6 +17,8 @@ import Dashboard from '@pages/Dashboard';
 import Items from '@pages/Inventory/Items';
 import ItemDetail from '@pages/Inventory/ItemDetail';
 import Categories from '@pages/Inventory/Categories';
+import Customers from '@pages/Customers/Customers';
+import CustomerDetail from '@pages/Customers/CustomerDetail';
 import Bills from '@pages/Bill/Bills';
 import BillCreate from '@pages/Bill/BillCreate';
 import Alerts from '@pages/Alerts/Alerts';
@@ -99,6 +101,22 @@ const App: React.FC = () => {
                             element={
                                 <ProtectedRoute>
                                     <Categories />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/customers"
+                            element={
+                                <ProtectedRoute>
+                                    <Customers />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/customers/:id"
+                            element={
+                                <ProtectedRoute>
+                                    <CustomerDetail />
                                 </ProtectedRoute>
                             }
                         />

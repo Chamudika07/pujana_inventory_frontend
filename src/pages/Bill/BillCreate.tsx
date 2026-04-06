@@ -14,9 +14,12 @@ import {
     Modal
 } from 'react-bootstrap';
 import { billService } from '../../services/billService';
+import { customerService } from '../../services/customerService';
 import { itemService } from '../../services/itemService';
 import type { BillCreateItem, BillResponse } from '../../types/bill';
+import type { CustomerListItem } from '../../types/customer';
 import type { Item } from '../../types/item';
+import { useDebounce } from '../../hooks';
 
 interface BillItem {
     item: Item;
@@ -41,6 +44,10 @@ const BillCreate: React.FC = () => {
     const [modelNumber, setModelNumber] = useState('');
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [quantity, setQuantity] = useState<number>(1);
+    const [customerQuery, setCustomerQuery] = useState('');
+    const [customerResults, setCustomerResults] = useState<CustomerListItem[]>([]);
+    const [selectedCustomer, setSelectedCustomer] = useState<CustomerListItem | null>(null);
+    const debouncedCustomerQuery = useDebounce(customerQuery, 300);
 
     // Modal state
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -51,6 +58,24 @@ const BillCreate: React.FC = () => {
             setBillType(type);
         }
     }, [type]);
+
+    useEffect(() => {
+        const loadCustomers = async () => {
+            if (billType !== 'sell' || debouncedCustomerQuery.trim().length < 2) {
+                setCustomerResults([]);
+                return;
+            }
+
+            try {
+                const results = await customerService.search(debouncedCustomerQuery.trim());
+                setCustomerResults(results.slice(0, 6));
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        void loadCustomers();
+    }, [billType, debouncedCustomerQuery]);
 
     const handleLookupItem = async () => {
         if (!modelNumber.trim()) {
@@ -81,6 +106,7 @@ const BillCreate: React.FC = () => {
             setBillStarted(true);
             setSelectedItem(null);
             setModelNumber('');
+            setCustomerResults([]);
             setSuccess(`${billType.toUpperCase()} bill draft started`);
         } catch (err) {
             setError('Failed to start bill');
@@ -138,7 +164,11 @@ const BillCreate: React.FC = () => {
                 quantity: billItem.quantity,
             }));
 
-            const response: BillResponse = await billService.createBill(billType, payload);
+            const response: BillResponse = await billService.createBill(
+                billType,
+                payload,
+                billType === 'sell' ? selectedCustomer?.id : undefined
+            );
             setSuccess(`Bill saved successfully with ID ${response.bill_id}`);
             // Reset form
             resetForm();
@@ -157,6 +187,9 @@ const BillCreate: React.FC = () => {
         setSelectedItem(null);
         setModelNumber('');
         setQuantity(1);
+        setSelectedCustomer(null);
+        setCustomerQuery('');
+        setCustomerResults([]);
     };
 
     const calculateTotal = () => {
@@ -207,6 +240,69 @@ const BillCreate: React.FC = () => {
                                         </div>
                                     </Form.Group>
 
+                                    {billType === 'sell' && (
+                                        <div className="mb-4">
+                                            <Form.Label className="fw-semibold">Customer</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                placeholder="Search customer by name or phone"
+                                                value={customerQuery}
+                                                onChange={(e) => {
+                                                    setCustomerQuery(e.target.value);
+                                                    if (selectedCustomer) {
+                                                        setSelectedCustomer(null);
+                                                    }
+                                                }}
+                                            />
+                                            <small className="text-muted d-block mt-2">
+                                                Optional for walk-in sales. Link a customer to keep purchase history.
+                                            </small>
+                                            {customerResults.length > 0 && !selectedCustomer && (
+                                                <ListGroup className="mt-2 shadow-sm">
+                                                    {customerResults.map((customer) => (
+                                                        <ListGroup.Item
+                                                            key={customer.id}
+                                                            action
+                                                            onClick={() => {
+                                                                setSelectedCustomer(customer);
+                                                                setCustomerQuery(customer.full_name);
+                                                                setCustomerResults([]);
+                                                            }}
+                                                        >
+                                                            <div className="fw-semibold">{customer.full_name}</div>
+                                                            <small className="text-muted">
+                                                                {customer.phone_number} | {customer.customer_type.toUpperCase()}
+                                                            </small>
+                                                        </ListGroup.Item>
+                                                    ))}
+                                                </ListGroup>
+                                            )}
+                                            {selectedCustomer && (
+                                                <div className="alert alert-light border mt-3 mb-0">
+                                                    <div className="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div className="fw-semibold">{selectedCustomer.full_name}</div>
+                                                            <small className="text-muted d-block">{selectedCustomer.phone_number}</small>
+                                                            <small className="text-muted d-block">
+                                                                Due Balance: Rs. {Number(selectedCustomer.due_balance).toFixed(2)}
+                                                            </small>
+                                                        </div>
+                                                        <Button
+                                                            variant="outline-secondary"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setSelectedCustomer(null);
+                                                                setCustomerQuery('');
+                                                            }}
+                                                        >
+                                                            Clear
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div className="d-grid">
                                         <Button
                                             variant="primary"
@@ -246,6 +342,13 @@ const BillCreate: React.FC = () => {
                                     </div>
                                     <p className="text-muted mb-2">Bill ID:</p>
                                     <h4 className="fw-bold text-primary mb-4">Generated on save</h4>
+                                    {billType === 'sell' && selectedCustomer && (
+                                        <div className="alert alert-light border text-start mb-4">
+                                            <small className="text-muted d-block">Selected Customer</small>
+                                            <div className="fw-semibold">{selectedCustomer.full_name}</div>
+                                            <small className="text-muted">{selectedCustomer.phone_number}</small>
+                                        </div>
+                                    )}
                                     <div className="d-grid gap-2">
                                         <Button
                                             variant="outline-secondary"

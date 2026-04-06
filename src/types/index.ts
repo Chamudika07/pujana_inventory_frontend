@@ -1,5 +1,6 @@
 export type { User, UserCreate, TokenResponse } from './user';
 export type { Item, ItemCreate, ItemUpdate } from './item';
 export type { Category } from './category';
-export type { Bill, BillResponse, BillCreateItem, BillItem, PrintBillResponse } from './bill';
+export type { Bill, BillResponse, BillCreateItem, BillCreatePayload, BillItem, PrintBillResponse } from './bill';
 export type { LowStockAlert, AlertStats, UserPreferencesUpdate } from './alert';
+export type { CustomerType, CustomerBasic, CustomerSummary, CustomerListItem, CustomerDetail, CustomerFormData } from './customer';

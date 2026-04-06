@@ -8,10 +8,15 @@ export const billService = {
     return response.data;
   },
 
-  async createBill(billType: 'buy' | 'sell', items: BillCreateItem[]): Promise<BillResponse> {
+  async createBill(
+    billType: 'buy' | 'sell',
+    items: BillCreateItem[],
+    customerId?: number
+  ): Promise<BillResponse> {
     const response = await apiClient.post('/bill/', {
       bill_type: billType,
       items,
+      customer_id: customerId,
     });
     return response.data;
   },
